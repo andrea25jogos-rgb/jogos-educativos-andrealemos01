@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Math Challenge PRO - Ranking</title>
+    <style>
+        body { background: #020617; color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; margin: 0; overflow: hidden; }
+        #info-bar { width: 100%; background: #1e293b; padding: 15px; display: flex; justify-content: space-around; align-items: center; border-bottom: 4px solid #f59e0b; }
+        #game-container { position: relative; width: 850px; height: 500px; background: #000; border: 5px solid #334155; border-radius: 15px; margin-top: 20px; overflow: hidden; }
+        #player { position: absolute; width: 45px; height: 45px; background: #f59e0b; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 30px; z-index: 10; box-shadow: 0 0 15px #f59e0b; }
+        .number { position: absolute; width: 55px; height: 55px; background: #334155; color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; border-radius: 8px; transition: all 0.3s ease-out; }
+        #equation-display { font-size: 40px; color: #fbbf24; font-weight: bold; }
+        #timer { font-size: 24px; font-family: monospace; color: #10b981; }
+        .wrong { background: #ef4444 !important; transform: scale(1.2); }
+        #ranking-container { display: none; text-align: center; background: #1e293b; padding: 30px; border-radius: 20px; margin-top: 20px; width: 450px; border: 2px solid #10b981; }
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        th, td { padding: 10px; border-bottom: 1px solid #334155; }
+        .btn-green { padding: 10px 20px; font-size: 18px; cursor: pointer; background: #10b981; border: none; color: white; border-radius: 5px; margin: 5px; }
+        .btn-red { padding: 5px 10px; font-size: 14px; cursor: pointer; background: #b91c1c; border: none; color: white; border-radius: 5px; margin-top: 20px; opacity: 0.7; }
+    </style>
+</head>
+<body>
+
+<div id="info-bar">
+    <div>NÍVEL: <span id="level-num">1</span>/15</div>
+    <div id="equation-display">Calculando...</div>
+    <div id="timer">00:00.00</div>
+</div>
+
+<div id="game-container">
+    <div id="player">🚀</div>
+</div>
+
+<div id="ranking-container">
+    <h2>🏆 RANKING DE MATEMÁTICA</h2>
+    <table id="ranking-table">
+        <thead><tr><th>Pos</th><th>Nome</th><th>Tempo</th></tr></thead>
+        <tbody id="ranking-body"></tbody>
+    </table>
+    <br>
+    <button class="btn-green" onclick="location.reload()">JOGAR NOVAMENTE</button>
+    <br>
+    <button class="btn-red" onclick="clearMathRanking()">🗑️ LIMPAR RANKING DA TURMA</button>
+</div>
+
+<script>
+    const levels = [
+        {q: "12 + 15", a: 27}, {q: "45 - 18", a: 27}, {q: "7 x 8", a: 56},
+        {q: "144 / 12", a: 12}, {q: "9 x 6", a: 54}, {q: "150 - 75", a: 75},
+        {q: "13 x 3", a: 39}, {q: "81 / 3", a: 27}, {q: "25 + 48", a: 73},
+        {q: "6 x 12", a: 72}, {q: "200 / 5", a: 40}, {q: "17 + 19", a: 36},
+        {q: "4 x 15", a: 60}, {q: "90 / 6", a: 15}, {q: "11 x 11", a: 121}
+    ];
+
+    let currentLevel = 0; let posX = 400; let posY = 230;
+    let startTime, timerInterval; let gameActive = true; let isShuffling = false;
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            let diff = Date.now() - startTime;
+            let m = Math.floor(diff / 60000).toString().padStart(2, '0');
+            let s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+            let ms = Math.floor((diff % 1000) / 10).toString().padStart(2, '0');
+            document.getElementById('timer').innerText = `${m}:${s}.${ms}`;
+        }, 50);
+    }
+
+    function shuffleNumbers() {
+        if (isShuffling) return;
+        isShuffling = true;
+        document.querySelectorAll('.number').forEach(n => {
+            n.classList.add('wrong');
+            n.style.left = Math.random() * 780 + 'px';
+            n.style.top = Math.random() * 440 + 'px';
+            setTimeout(() => { n.classList.remove('wrong'); isShuffling = false; }, 400);
+        });
+    }
+
+    function initLevel() {
+        const level = levels[currentLevel];
+        document.getElementById('level-num').innerText = currentLevel + 1;
+        document.getElementById('equation-display').innerText = level.q + " = ?";
+        document.querySelectorAll('.number').forEach(n => n.remove());
+        
+        let options = [level.a];
+        while(options.length < 8) {
+            let fake = level.a + Math.floor(Math.random() * 20) - 10;
+            if(!options.includes(fake) && fake !== level.a) options.push(fake);
+        }
+
+        options.sort(() => Math.random() - 0.5).forEach((num) => {
+            const nDiv = document.createElement('div');
+            nDiv.className = 'number';
+            nDiv.innerText = num;
+            nDiv.style.left = Math.random() * 780 + 'px';
+            nDiv.style.top = Math.random() * 440 + 'px';
+            document.getElementById('game-container').appendChild(nDiv);
+        });
+    }
+
+    function finishGame() {
+        gameActive = false;
+        clearInterval(timerInterval);
+        const finalTime = document.getElementById('timer').innerText;
+        setTimeout(() => {
+            const nome = prompt("🏆 MESTRE DOS CÁLCULOS!\nTempo: " + finalTime + "\nSeu nome para o Ranking:");
+            if(nome) saveMathRanking(nome, finalTime);
+            showMathRanking();
+        }, 500);
+    }
+
+    function saveMathRanking(nome, tempo) {
+        let ranking = JSON.parse(localStorage.getItem('ranking_math') || "[]");
+        ranking.push({nome, tempo});
+        ranking.sort((a, b) => a.tempo.localeCompare(b.tempo));
+        localStorage.setItem('ranking_math', JSON.stringify(ranking.slice(0, 5)));
+    }
+
+    function showMathRanking() {
+        document.getElementById('game-container').style.display = 'none';
+        document.getElementById('ranking-container').style.display = 'block';
+        const ranking = JSON.parse(localStorage.getItem('ranking_math') || "[]");
+        document.getElementById('ranking-body').innerHTML = ranking.map((r, i) => 
+            `<tr><td>${i+1}º</td><td>${r.nome}</td><td>${r.tempo}</td></tr>`).join('');
+    }
+
+    function clearMathRanking() {
+        if(confirm("Limpar o ranking de matemática para a próxima turma?")) {
+            localStorage.removeItem('ranking_math');
+            showMathRanking();
+        }
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if(!gameActive || isShuffling) return;
+        const step = 25;
+        if(e.key === 'ArrowUp' && posY > 0) posY -= step;
+        if(e.key === 'ArrowDown' && posY < 450) posY += step;
+        if(e.key === 'ArrowLeft' && posX > 0) posX -= step;
+        if(e.key === 'ArrowRight' && posX < 800) posX += step;
+        const p = document.getElementById('player');
+        p.style.left = posX + 'px'; p.style.top = posY + 'px';
+
+        const level = levels[currentLevel];
+        document.querySelectorAll('.number').forEach(n => {
+            const nX = parseFloat(n.style.left);
+            const nY = parseFloat(n.style.top);
+            if(Math.abs(posX - nX) < 45 && Math.abs(posY - nY) < 45) {
+                if(parseInt(n.innerText) === level.a) {
+                    currentLevel++;
+                    if(currentLevel < levels.length) initLevel();
+                    else finishGame();
+                } else { shuffleNumbers(); }
+            }
+        });
+    });
+
+    startTimer(); initLevel();
+</script>
+</body>
+</html>
